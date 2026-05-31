@@ -30,7 +30,7 @@ A node only gets flagged by the GNN. The agent never detects; it explains.
 
 ## Architecture
 
-\`\`\`mermaid
+```mermaid
 flowchart TD
     subgraph detection ["Layer 1 - ML pipeline (detection)"]
         A["Elliptic dataset"] --> B["Build graph - PyG Data"]
@@ -51,7 +51,7 @@ flowchart TD
     J --> K["Streamlit dashboard"]
     G --> K
     H -. "traces" .-> L["Langfuse"]
-\`\`\`
+```
 
 ## Key design decisions
 
@@ -79,7 +79,7 @@ Langfuse, Docker, GitHub Actions, deployed to Hugging Face Spaces.
 Built and tested on Pop!_OS with an RTX 4050 and CUDA 13.0 drivers, Python
 3.11, pip and venv.
 
-\`\`\`bash
+```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
@@ -93,11 +93,11 @@ pip install pyg_lib torch_scatter torch_sparse -f https://data.pyg.org/whl/torch
 # PyG core and the rest of the project
 pip install torch-geometric
 pip install -e '.[dev]'
-\`\`\`
+```
 
 ## Roadmap
 
-- [ ] Phase 0: repo scaffold and environment (current)
+- [X] Phase 0: repo scaffold and environment (current)
 - [ ] Phase 1: graph and GNN fundamentals, EDA
 - [ ] Phase 2: XGBoost baseline and PyG basics
 - [ ] Phase 3: GraphSAGE training with neighbor sampling
