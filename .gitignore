@@ -1,48 +1,42 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
+*.egg-info/
 build/
 dist/
-*.egg-info/
-.eggs/
 
-# Virtual environments
+# Virtual envs
 .venv/
 venv/
-env/
-ENV/
 
-# Jupyter
-.ipynb_checkpoints/
-*/.ipynb_checkpoints/*
+# Environments and secrets
+.env
+.env.*
+!.env.example
 
-# Data and models (too large for git)
-data/raw/
-data/processed/
+# Data and model artifacts (too large for git)
+data/raw/*
+data/processed/*
+artifacts/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!artifacts/.gitkeep
 *.pt
 *.pth
 *.pkl
-*.joblib
 
-# Environment variables and secrets
-.env
-*.key
+# Jupyter
+.ipynb_checkpoints/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-
-# OS
-.DS_Store
-Thumbs.db
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
 # Logs
 *.log
-logs/
 
-# Langfuse / local cache
-.cache/
+# OS and IDE
+.DS_Store
+.idea/
+.vscode/
