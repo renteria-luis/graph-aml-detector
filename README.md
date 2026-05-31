@@ -1,63 +1,110 @@
-# AML Graph Detector
+# Graph AML Detector
 
-Anti-money laundering detection on Bitcoin transactions using a Graph Neural Network for classification and a LangGraph agentic layer for automated investigation and explainable risk reporting.
+Graph neural network that detects money laundering in Bitcoin transactions,
+paired with an agentic layer that investigates and explains each flagged node.
 
-> Status: In progress (started May 2026)
+Status: in progress, started May 2026. The detection pipeline and the agent
+layer are under active development. This README documents the target design;
+sections will be marked done as they land.
 
 ## Problem
 
-Money laundering hides illicit funds by dispersing them across many small transactions. The signal is rarely in a single transaction; it lives in the structure of the transaction network. An account that receives from dozens of sources and forwards to dozens of destinations in a short window is suspicious because of its position in the graph, not its individual amounts. Tabular models like XGBoost miss this because they treat each transaction independently.
-
-This project models the problem as it actually is: a graph.
+Money laundering hides illicit funds by spreading them across many
+transactions. The signal lives in the network pattern, not in any single
+transaction. A node receiving from 50 sources and sending to 50 destinations
+in two hours is suspicious because of its position in the graph, not its
+amount. Tabular models such as XGBoost miss this because they treat rows
+independently. A graph model can read the topology directly.
 
 ## Approach
 
-The system has two layers.
+Two layers that connect:
 
-A detection layer trains a GraphSAGE Graph Neural Network on the Elliptic dataset (around 204K real Bitcoin transactions, 166 features, labeled licit or illicit) to classify transactions using the structure of their neighborhood in the network.
+- Detection: a GraphSAGE model classifies transactions as licit or illicit
+  using both node features and graph structure.
+- Investigation: when the model flags a node, a LangGraph ReAct agent
+  inspects its neighborhood, computes centrality, looks for similar patterns,
+  and writes a human-readable risk report.
 
-An investigation layer activates when a transaction is flagged. A LangGraph agent investigates it using tools (neighborhood lookup, network centrality, similar pattern retrieval), reasons step by step using the ReAct pattern, and produces an explainable risk report.
+A node only gets flagged by the GNN. The agent never detects; it explains.
 
 ## Architecture
 
-```mermaid
-graph TD
-    A[Elliptic Dataset] --> B[Build Graph: PyG Data]
-    B --> C[Temporal Split]
-    C --> D[Train GraphSAGE with Neighbor Sampling]
-    D --> E[Evaluate: PR-AUC, Recall]
-    E --> F[Saved Model]
-    F --> G[FastAPI /predict]
-    G --> H{Flagged?}
-    H -->|Yes| I[LangGraph Agent]
-    I --> J[Tools: Neighborhood, Centrality, Similar Patterns]
-    J --> K[ReAct Reasoning]
-    K --> L[Explainable Risk Report]
-    H -->|No| M[Return Prediction]
-    L --> N[Streamlit Dashboard]
-    M --> N
-```
+\`\`\`mermaid
+flowchart TD
+    subgraph detection ["Layer 1 - ML pipeline (detection)"]
+        A["Elliptic dataset"] --> B["Build graph - PyG Data"]
+        B --> C["Temporal split"]
+        C --> D["Train GraphSAGE + neighbor sampling"]
+        D --> E["Evaluate - PR-AUC"]
+        E --> F["Saved model"]
+    end
 
-## Key Design Decisions
+    F --> G["FastAPI /predict"]
+    G -- "node flagged" --> H
 
-- GraphSAGE over GCN or GAT, because 204K nodes do not fit full-batch in GPU memory and GraphSAGE supports neighbor sampling.
-- Temporal split over random split, because a random split leaks future information into training, which is a common and serious mistake in fraud detection.
-- PR-AUC over accuracy, because with roughly 2 percent positive class a model predicting everything as licit would score 98 percent accuracy while being useless.
-- A baseline XGBoost model is trained first, to empirically demonstrate that the graph structure adds value over tabular features alone.
-- The agent is used for investigation only. The GNN detects, the agent explains.
+    subgraph investigation ["Layer 2 - agentic investigation (explanation)"]
+        H["LangGraph ReAct agent"] --> I["Tools: neighborhood, centrality, similar patterns"]
+        I --> J["Explainable risk report"]
+    end
 
-## Tech Stack
+    J --> K["Streamlit dashboard"]
+    G --> K
+    H -. "traces" .-> L["Langfuse"]
+\`\`\`
 
-PyTorch Geometric, NetworkX, LangGraph, FastAPI, Pydantic, Streamlit, Plotly, Docker, GitHub Actions, deployed to Hugging Face Spaces.
+## Key design decisions
 
-## Status and Roadmap
+- GraphSAGE over GCN/GAT: 204K nodes do not fit full-batch in 8GB; GraphSAGE
+  supports neighbor sampling.
+- Temporal split over random: a random split leaks future transactions into
+  training, which inflates fraud-detection metrics.
+- PR-AUC over accuracy: with around 2% positive class, predicting everything
+  licit scores 98% accuracy and is useless.
+- XGBoost baseline first: to prove empirically that the graph adds value over
+  tabular features.
 
-- [x] Project setup and architecture
-- [ ] Exploratory data analysis
-- [ ] Baseline model (XGBoost)
-- [ ] GraphSAGE training pipeline
-- [ ] Evaluation and baseline comparison
-- [ ] LangGraph investigation agent
-- [ ] FastAPI service
-- [ ] Streamlit dashboard
-- [ ] Deployment to Hugging Face Spaces
+## Dataset
+
+Elliptic dataset: around 204K real Bitcoin transactions, 166 features,
+labeled licit/illicit. A standard, public AML-on-graphs benchmark.
+
+## Tech stack
+
+PyTorch Geometric, NetworkX, LangGraph, FastAPI, Pydantic, Streamlit,
+Langfuse, Docker, GitHub Actions, deployed to Hugging Face Spaces.
+
+## Setup
+
+Built and tested on Pop!_OS with an RTX 4050 and CUDA 13.0 drivers, Python
+3.11, pip and venv.
+
+\`\`\`bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+
+# PyTorch against CUDA 13.0
+pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cu130
+
+# PyG compiled extensions, matched to torch 2.10.0 + cu130
+pip install pyg_lib torch_scatter torch_sparse -f https://data.pyg.org/whl/torch-2.10.0+cu130.html
+
+# PyG core and the rest of the project
+pip install torch-geometric
+pip install -e '.[dev]'
+\`\`\`
+
+## Roadmap
+
+- [ ] Phase 0: repo scaffold and environment (current)
+- [ ] Phase 1: graph and GNN fundamentals, EDA
+- [ ] Phase 2: XGBoost baseline and PyG basics
+- [ ] Phase 3: GraphSAGE training with neighbor sampling
+- [ ] Phase 4: evaluation, baseline comparison, FastAPI
+- [ ] Phase 5-6: LangGraph investigation agent
+- [ ] Phase 7: Streamlit dashboard, Docker, Hugging Face Spaces
+
+## License
+
+MIT
