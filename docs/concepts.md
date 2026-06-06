@@ -80,3 +80,119 @@ trace back to the flagged source and see something like "exposed to illicit
 source". Exchanges can then freeze funds and decide whether to accept, block, or
 review a deposit or withdrawal. The main users are exchanges and compliance
 teams, and only rarely law enforcement.
+
+## Message Passing (GNN) Notes
+
+Message passing in Graph Neural Networks (GNNs) is similar to convolution in CNNs.
+
+In CNNs, a kernel mixes information from nearby pixels.  
+In GNNs, a node mixes information from its neighboring nodes.
+
+### Node Features (Elliptic example)
+
+Each node has 166 features.
+
+Some features are:
+- Local (node-specific)
+- Aggregated (from previous preprocessing steps, not learned)
+
+### Why message passing exists
+
+CNNs operate on grids (images).  
+GNNs operate on graphs (adjacency matrix + node connections), so we cannot flatten the structure.
+
+Message passing replaces convolution in graphs.
+
+### Example graph
+
+A → B  
+A → C  
+
+We want to update node A using its neighbors.
+
+### Steps of Message Passing
+
+#### 1. Gather
+Collect features from neighbors (B and C).
+
+Each node has a feature vector (e.g., 166 values each).
+
+#### 2. Aggregate
+Combine neighbor features into a single vector.
+
+Example: mean aggregation
+
+Result:
+- one vector of size 166
+
+#### 3. Update
+Combine:
+- original node features (A)
+- aggregated neighbor features
+
+Typical operation:
+- concatenate both vectors
+- apply a learnable linear transformation
+
+### Output (Embedding)
+
+After update, we get a new embedding:
+
+Example:
+- input: 166 features
+- output: 64 or 128 features
+
+This is similar to a CNN layer:
+- feature reduction + learned transformation
+
+In PyTorch Geometric:
+
+`GCNConv(in_channels, hidden_channels)`  
+performs:
+- aggregation
+- transformation
+- non-linearity (e.g. ReLU)
+
+### One message passing round
+
+One round updates all nodes once.
+
+After one round:
+- each node contains information about itself + 1-hop neighbors
+
+### K layers (K rounds)
+
+Stacking K layers means:
+- each node sees K-hop neighbors
+
+### Problem: neighborhood explosion
+
+With many layers, neighborhoods grow fast:
+
+A → B → (neighbors of B) → (neighbors of neighbors) → ...
+
+This can grow exponentially depending on graph structure.
+
+### Solution: GraphSAGE
+
+GraphSAGE avoids full neighborhood expansion by sampling neighbors.
+
+Example:
+- Node A has 100 neighbors
+- instead of using all 100, sample 10
+
+Key idea:
+- full neighborhood is not required to learn good embeddings
+- sampling reduces computation and memory cost
+
+### Other approaches
+
+#### GCN (Graph Convolutional Network)
+- uses all neighbors
+- sums or averages normalized features
+- each neighbor contributes equally
+
+#### GAT (Graph Attention Network)
+- uses all neighbors
+- learns attention weights per neighbor
+- some neighbors have more influence than others
